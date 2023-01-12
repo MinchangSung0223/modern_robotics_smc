@@ -1,13 +1,13 @@
 [build-system]
-requires = ["flit"]
+requires = ["flit","numpy"]
 build-backend = "flit.buildapi"
 
 [project]
-name =  "py-project-toml"
+name =  "modern_robotics_smc"
 authors = [
-    {name = "Daniel Ciborowski", email = "dciborow@microsoft.com"},
+    {name = "Minchang Sung", email = "tjdalsckd@gmail.com"},
 ]
-description = "Sample Python Project for creating a new Python Module"
+description = "Modern Robotics: Mechanics, Planning, and Control"
 readme = "README.md"
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -51,7 +51,7 @@ Source = "https://github.com/microsoft/python-package-template"
 Tracker = "https://github.com/microsoft/python-package-template/issues"
 
 [tool.flit.module]
-name = "python_package"
+name = "modern_robotics_smc"
 
 [tool.bandit]
 exclude_dirs = ["build","dist","tests","scripts"]
