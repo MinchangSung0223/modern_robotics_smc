@@ -55,7 +55,17 @@ def Normalize(V):
 '''
 *** CHAPTER 3: RIGID-BODY MOTIONS ***
 '''
-
+def EulerXYZ(a,b,r):
+    c_a = np.cos(a)
+    c_b = np.cos(b)
+    c_r = np.cos(r)
+    s_a = np.sin(a)
+    s_b = np.sin(b)
+    s_r = np.sin(r) 
+    R = np.array([[c_a*c_b , c_a*s_b*s_r - s_a*c_r, c_a*s_b*c_r+s_a*s_r],
+                  [s_a*c_b , s_a*s_b*s_r + c_a*c_r, s_a*s_b*c_r-c_a*s_r],
+                  [-s_b, c_b*s_r , c_b*c_r]])
+    return R;
 def RotInv(R):
     """Inverts a rotation matrix
 
@@ -691,11 +701,38 @@ def AnalyticJacobianBody(M,Blist, thetalist):
     omega_r = VecToso3(r)
     A = np.eye(3) - (1-np.cos(norm_r))/(norm_r*norm_r) * omega_r+ (norm_r - np.sin(norm_r)) / (norm_r**3) * omega_r @ omega_r
     A_ = np.eye(6)
+    A_[0:3,0:3] = A.T
+    A_[3:6,3:6] = Rsb
+    Ja = A_ @ Jb
+    return Ja
+def bulletAnalyticJacobianBody(M,Blist, thetalist):
+    Jb =  JacobianBody(Blist, thetalist)
+    Tsb = FKinBody(M,Blist, thetalist)
+    Rsb= Tsb[0:3,0:3]
+    r = so3ToVec(Rsb)
+    norm_r = np.sqrt(r[0]*r[0]+r[1]*r[1]+r[2]*r[2])
+    omega_r = VecToso3(r)
+    A = np.eye(3) - (1-np.cos(norm_r))/(norm_r*norm_r) * omega_r+ (norm_r - np.sin(norm_r)) / (norm_r**3) * omega_r @ omega_r
+    A_ = np.eye(6)
     A_[0:3,0:3] = Rsb
     A_[3:6,3:6] = Rsb
     Ja = A_ @ Jb
     return Ja
+    
 def AnalyticJacobianSpace(M,Slist, thetalist):
+    Js =  JacobianSpace(Slist, thetalist)
+    Tsb = FKinSpace(M,Slist, thetalist)
+    Rsb= Tsb[0:3,0:3]
+    r = so3ToVec(Rsb)
+    norm_r = np.sqrt(r[0]*r[0]+r[1]*r[1]+r[2]*r[2])
+    omega_r = VecToso3(r)
+    A = np.eye(3) - (1-np.cos(norm_r))/(norm_r*norm_r) * omega_r+ (norm_r - np.sin(norm_r)) / (norm_r**3) * omega_r @ omega_r
+    A_ = np.eye(6)
+    A_[0:3,0:3] = A.T
+    A_[3:6,3:6] = Rsb
+    Ja = A_ @ Js
+    return Ja   
+def bulletAnalyticJacobianSpace(M,Slist, thetalist):
     Js =  JacobianSpace(Slist, thetalist)
     Tsb = FKinSpace(M,Slist, thetalist)
     Rsb= Tsb[0:3,0:3]
@@ -707,7 +744,7 @@ def AnalyticJacobianSpace(M,Slist, thetalist):
     A_[0:3,0:3] = Rsb
     A_[3:6,3:6] = Rsb
     Ja = A_ @ Js
-    return Ja    
+    return Ja       
 def JacobianSpace(Slist, thetalist):
     """Computes the space Jacobian for an open chain robot
 
@@ -1567,7 +1604,26 @@ def CubicTimeScaling(Tf, t):
         0.216
     """
     return 3 * (1.0 * t / Tf) ** 2 - 2 * (1.0 * t / Tf) ** 3
+def CubicTimeScalingDot(Tf, t):
+    """Computes sdot(t) for a cubic time scaling
 
+    :param Tf: Total time of the motion in seconds from rest to rest
+    :param t: The current time t satisfying 0 < t < Tf
+    :return: The path parameter sdot(t) corresponding to a third-order
+             polynomial motion that begins and ends at zero velocity
+
+    """
+    return 3*2/ Tf * (1.0 * t / Tf) - 2 *3/ Tf* (1.0 * t / Tf) ** 2
+def CubicTimeScalingDdot(Tf, t):
+    """Computes sddot(t) for a cubic time scaling
+
+    :param Tf: Total time of the motion in seconds from rest to rest
+    :param t: The current time t satisfying 0 < t < Tf
+    :return: The path parameter sddot(t) corresponding to a third-order
+             polynomial motion that begins and ends at zero velocity
+
+    """
+    return 3*2/ Tf * (1.0 * 1.0 / Tf) - 2 *3/ Tf*2.0/ Tf* (1.0 * t / Tf)    
 def QuinticTimeScaling(Tf, t):
     """Computes s(t) for a quintic time scaling
 
@@ -1585,7 +1641,32 @@ def QuinticTimeScaling(Tf, t):
     """
     return 10 * (1.0 * t / Tf) ** 3 - 15 * (1.0 * t / Tf) ** 4 \
            + 6 * (1.0 * t / Tf) ** 5
+def QuinticTimeScalingDot(Tf, t):
+    """Computes sdot(t) for a quintic time scaling
 
+    :param Tf: Total time of the motion in seconds from rest to rest
+    :param t: The current time t satisfying 0 < t < Tf
+    :return: The path parameter sdot(t) corresponding to a fifth-order
+             polynomial motion that begins and ends at zero velocity and zero
+             acceleration
+
+    Example Input:
+        Tf = 2
+        t = 0.6
+    Output:
+        0.16308
+    """
+    return 10*3.0/Tf*(t/Tf)**2 -15.0*4.0 /Tf*(t/Tf)**3 + 6.0/Tf*5.0*(t/Tf)**4
+def QuinticTimeScalingDdot(Tf, t):
+    """Computes sddot(t) for a quintic time scaling
+
+    :param Tf: Total time of the motion in seconds from rest to rest
+    :param t: The current time t satisfying 0 < t < Tf
+    :return: The path parameter sddot(t) corresponding to a fifth-order
+             polynomial motion that begins and ends at zero velocity and zero
+             acceleration
+    """
+    return 10*3.0/Tf/Tf*2.0*(t/Tf) -15.0*4.0*3.0 /Tf/Tf*(t/Tf)**2 + 6.0/Tf*5.0*4.0/Tf*(t/Tf)**3
 def JointTrajectory(thetastart, thetaend, Tf, N, method):
     """Computes a straight-line trajectory in joint space
 
@@ -1687,7 +1768,7 @@ def ScrewTrajectory(Xstart, Xend, Tf, N, method):
                                                       Xend)) * s))
     return traj
 
-def CartesianTrajectory(Xstart, Xend, Tf, N, method):
+def CartesianTrajectory(Xstart, Xend, Tf, N, method,type=0):
     """Computes a trajectory as a list of N SE(3) matrices corresponding to
     the origin of the end-effector frame following a straight line
 
@@ -1699,6 +1780,7 @@ def CartesianTrajectory(Xstart, Xend, Tf, N, method):
     :param method: The time-scaling method, where 3 indicates cubic (third-
                    order polynomial) time scaling and 5 indicates quintic
                    (fifth-order polynomial) time scaling
+    :parma type : 0--pose, 1--twist, 2--time derivative of twist
     :return: The discretized trajectory as a list of N matrices in SE(3)
              separated in time by Tf/(N-1). The first in the list is Xstart
              and the Nth is Xend
@@ -1744,13 +1826,32 @@ def CartesianTrajectory(Xstart, Xend, Tf, N, method):
     for i in range(N):
         if method == 3:
             s = CubicTimeScaling(Tf, timegap * i)
+            sdot = CubicTimeScalingDot(Tf, timegap * i)
+            sddot = CubicTimeScalingDdot(Tf, timegap * i)          
         else:
             s = QuinticTimeScaling(Tf, timegap * i)
-        traj[i] \
-        = np.r_[np.c_[np.dot(Rstart, \
-        MatrixExp3(MatrixLog3(np.dot(np.array(Rstart).T,Rend)) * s)), \
-                   s * np.array(pend) + (1 - s) * np.array(pstart)], \
-                   [[0, 0, 0, 1]]]
+            sdot = QuinticTimeScalingDot(Tf, timegap * i)
+            sddot = QuinticTimeScalingDdot(Tf, timegap * i) 
+        Rs = np.dot(Rstart, \
+            MatrixExp3(MatrixLog3(np.dot(np.array(Rstart).T,Rend)) * s)) 
+        dRsds =MatrixLog3(np.dot(np.array(Rstart).T,Rend)) @ Rs;
+        ddRsdsds = MatrixLog3(np.dot(np.array(Rstart).T,Rend))@ MatrixLog3(np.dot(np.array(Rstart).T,Rend)) @ Rs;
+        if type ==0:                     
+            traj[i] \
+            = np.r_[np.c_[Rs, \
+                       s * np.array(pend) + (1 - s) * np.array(pstart)], \
+                       [[0, 0, 0, 1]]]
+        elif type==1: 
+            w = so3ToVec((dRsds @ Rs.T )*sdot);
+            v = (np.array(pend)-np.array(pstart))*sdot;
+            Vs = np.r_[w,v]
+            traj[i] = Vs; 
+        elif type==2:
+                  
+            dw = so3ToVec(dRsds @ Rs.T*sddot+(ddRsdsds @ Rs.T + dRsds @ dRsds.T)*sdot*sdot);
+            dv = (np.array(pend)-np.array(pstart))*sddot;
+            dVs = np.r_[dw,dv]
+            traj[i] =dVs;                   
     return traj
 
 '''
