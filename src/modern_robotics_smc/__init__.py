@@ -5,4 +5,4 @@
 """Python Package Template"""
 from __future__ import annotations
 from .core import *
-__version__ = "0.0.11"
+__version__ = "0.0.12"

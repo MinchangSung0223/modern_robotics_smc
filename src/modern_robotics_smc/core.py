@@ -1765,8 +1765,8 @@ def ScrewTrajectory(Xstart, Xend, Tf, N, method,type=0):
             sddot = CubicTimeScalingDdot(Tf, timegap * i)        
         else:
             s = QuinticTimeScaling(Tf, timegap * i)
-            sdot = CubicTimeScalingDot(Tf, timegap * i)
-            sddot = CubicTimeScalingDdot(Tf, timegap * i)    
+            sdot = QuinticTimeScalingDot(Tf, timegap * i)
+            sddot = QuinticTimeScalingDdot(Tf, timegap * i)    
         Xs = np.dot(Xstart, MatrixExp6(MatrixLog6(np.dot(TransInv(Xstart),Xend)) * s)) 
         V = se3ToVec(MatrixLog6(TransInv(Xstart)@Xend)); 
         if type == 0  :
