@@ -1709,7 +1709,7 @@ def JointTrajectory(thetastart, thetaend, Tf, N, method):
     traj = np.array(traj).T
     return traj
 
-def ScrewTrajectory(Xstart, Xend, Tf, N, method):
+def ScrewTrajectory(Xstart, Xend, Tf, N, method,type=0):
     """Computes a trajectory as a list of N SE(3) matrices corresponding to
       the screw motion about a space screw axis
 
@@ -1761,11 +1761,22 @@ def ScrewTrajectory(Xstart, Xend, Tf, N, method):
     for i in range(N):
         if method == 3:
             s = CubicTimeScaling(Tf, timegap * i)
+            sdot = CubicTimeScalingDot(Tf, timegap * i)
+            sddot = CubicTimeScalingDdot(Tf, timegap * i)        
         else:
             s = QuinticTimeScaling(Tf, timegap * i)
-        traj[i] \
-        = np.dot(Xstart, MatrixExp6(MatrixLog6(np.dot(TransInv(Xstart), \
-                                                      Xend)) * s))
+            sdot = CubicTimeScalingDot(Tf, timegap * i)
+            sddot = CubicTimeScalingDdot(Tf, timegap * i)    
+        Xs = np.dot(Xstart, MatrixExp6(MatrixLog6(np.dot(TransInv(Xstart),Xend)) * s)) 
+        V = se3ToVec(MatrixLog6(TransInv(Xstart)@Xend)); 
+        if type == 0  :
+            traj[i] \
+            = np.dot(Xstart, MatrixExp6(MatrixLog6(np.dot(TransInv(Xstart), \
+                                                          Xend)) * s))
+        elif type == 1 :
+            traj[i] = V*sdot
+        elif type == 2 :   
+            traj[i] = V*sddot
     return traj
 
 def CartesianTrajectory(Xstart, Xend, Tf, N, method,type=0):
@@ -2098,3 +2109,4 @@ def SimulateControl(thetalist, dthetalist, g, Ftipmat, Mlist, Glist, \
     taumat = np.array(taumat).T
     thetamat = np.array(thetamat).T
     return (taumat, thetamat)
+
