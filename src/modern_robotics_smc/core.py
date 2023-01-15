@@ -1708,7 +1708,52 @@ def JointTrajectory(thetastart, thetaend, Tf, N, method):
         traj[:, i] = s * np.array(thetaend) + (1 - s) * np.array(thetastart)
     traj = np.array(traj).T
     return traj
-
+def TransToTwist(Xd_list,dt):
+    n = len(Xd_list)
+    prevXd =np.reshape(Xd_list[0,:,:],[4,4])
+    Vd_list = []
+    for i in range(0,n):
+        Xd = np.reshape(Xd_list[i,:,:],[4,4])
+        Vd = se3ToVec(MatrixLog6(TransInv(prevXd)@Xd))/dt;
+        prevXd = Xd;
+        Vd_list.append(Vd);
+    return np.array(Vd_list);
+def TransToVel(Xd_list,dt):
+    n = len(Xd_list)
+    prevXd =np.reshape(Xd_list[0,:,:],[4,4])
+    Vd_list = []
+    for i in range(0,n):
+        Xd = np.reshape(Xd_list[i,:,:],[4,4])
+        Rd,pd = TransToRp(Xd)
+        prevRd,prevpd = TransToRp(prevXd)
+        w = so3ToVec(MatrixLog3(prevRd.T @ Rd ))/dt
+        v = (pd - prevpd)/dt
+        Vd = np.r_[w,v];
+        prevXd = Xd;
+        Vd_list.append(Vd);
+    return np.array(Vd_list);
+def TransToAcc(Xd_list,dt):
+    n = len(Xd_list)
+    Vd_list = TransToVel(Xd_list,dt)
+    dVd_list  =[]
+    prevVd =Vd_list[0,:]
+    for i in range(0,n):
+        Vd = Vd_list[i,:];
+        dVd = (Vd-prevVd)/dt
+        prevVd = Vd;
+        dVd_list.append(dVd);
+    return np.array(dVd_list);
+def TransToTwistDot(Xd_list,dt):
+    n = len(Xd_list)
+    Vd_list = TransToTwist(Xd_list,dt)
+    prevVd = Vd_list[0,:];
+    dVd_list = []
+    for i in range(0,n):
+        Vd = Vd_list[i,:];
+        dVd = (Vd-prevVd)/dt
+        prevVd = Vd;
+        dVd_list.append(dVd);
+    return np.array(dVd_list);
 def ScrewTrajectory(Xstart, Xend, Tf, N, method,type=0):
     """Computes a trajectory as a list of N SE(3) matrices corresponding to
       the screw motion about a space screw axis
